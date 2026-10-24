@@ -73,12 +73,31 @@ export default async (req: Request, context: Context) => {
     }
 
     const resources = await listAll();
+    
+    // Safe diagnostic logging (no credentials)
+    console.log(JSON.stringify({
+      event: "cloudinary_manifest_fetch",
+      folder: FOLDER,
+      count: resources.length,
+      samples: resources.slice(0, 10).map((r: any) => ({
+        public_id: r.public_id,
+        asset_folder: r.asset_folder,
+        folder: r.folder,
+        resource_type: r.resource_type
+      }))
+    }));
+
     const items: any[] = [];
 
     for (const r of resources) {
       if (!r?.public_id) continue;
       const rt = r.resource_type;
       if (rt !== "image" && rt !== "video") continue;
+      // Strict filter: only assets whose actual asset_folder is exactly Christmas
+      const assetFolder = r.asset_folder || r.folder;
+      if (assetFolder !== FOLDER) {
+        continue;
+      }
       const item: any = {
         id: r.public_id,
         publicId: r.public_id,
@@ -101,6 +120,12 @@ export default async (req: Request, context: Context) => {
     }
 
     items.sort((a, b) => String(a.publicId).localeCompare(String(b.publicId)));
+
+    console.log(JSON.stringify({
+      event: "cloudinary_manifest_filtered",
+      folder: FOLDER,
+      returned: items.length
+    }));
 
     return new Response(JSON.stringify({ items }), {
       status: 200,
