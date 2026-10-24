@@ -16,17 +16,64 @@ cloudinary.config({
 async function listAll() {
   const all: any[] = [];
   let next_cursor: string | undefined = undefined;
-  do {
-    const res: any = await cloudinary.api.resources_by_asset_folder({
-      asset_folder: FOLDER,
-      max_results: 500,
-      next_cursor,
-    });
-    if (Array.isArray(res.resources)) {
-      all.push(...res.resources);
-    }
-    next_cursor = res.next_cursor;
-  } while (next_cursor);
+  // Try resources_by_asset_folder first
+  try {
+    do {
+      const res: any = await cloudinary.api.resources_by_asset_folder({
+        asset_folder: FOLDER,
+        max_results: 500,
+        next_cursor,
+      });
+      if (Array.isArray(res.resources)) {
+        all.push(...res.resources);
+      }
+      next_cursor = res.next_cursor;
+    } while (next_cursor);
+    if (all.length > 0) return all;
+  } catch (e) {
+    console.log(JSON.stringify({ event: "resources_by_asset_folder_error", message: e?.message }));
+  }
+  
+  // Fallback: search for assets with public_id containing folder
+  try {
+    const all2: any[] = [];
+    let next_cursor2: string | undefined = undefined;
+    do {
+      const res: any = await cloudinary.search
+        .expression(`folder:${FOLDER}`)
+        .max_results(500)
+        .next_cursor(next_cursor2)
+        .execute();
+      if (Array.isArray(res.resources)) {
+        all2.push(...res.resources);
+      }
+      next_cursor2 = res.next_cursor;
+    } while (next_cursor2);
+    if (all2.length > 0) return all2;
+  } catch (e) {
+    console.log(JSON.stringify({ event: "search_by_folder_error", message: e?.message }));
+  }
+  
+  // Fallback 2: search for public_id prefix
+  try {
+    const all3: any[] = [];
+    let next_cursor3: string | undefined = undefined;
+    do {
+      const res: any = await cloudinary.search
+        .expression(`public_id:${FOLDER}/*`)
+        .max_results(500)
+        .next_cursor(next_cursor3)
+        .execute();
+      if (Array.isArray(res.resources)) {
+        all3.push(...res.resources);
+      }
+      next_cursor3 = res.next_cursor;
+    } while (next_cursor3);
+    if (all3.length > 0) return all3;
+  } catch (e) {
+    console.log(JSON.stringify({ event: "search_by_prefix_error", message: e?.message }));
+  }
+  
   return all;
 }
 
@@ -74,7 +121,6 @@ export default async (req: Request, context: Context) => {
 
     const resources = await listAll();
     
-    // Safe diagnostic logging (no credentials)
     console.log(JSON.stringify({
       event: "cloudinary_manifest_fetch",
       folder: FOLDER,
@@ -84,7 +130,6 @@ export default async (req: Request, context: Context) => {
         asset_folder: r.asset_folder,
         folder: r.folder,
         path: r.path,
-        display_name: r.display_name,
         resource_type: r.resource_type
       }))
     }));
@@ -95,16 +140,20 @@ export default async (req: Request, context: Context) => {
       if (!r?.public_id) continue;
       const rt = r.resource_type;
       if (rt !== "image" && rt !== "video") continue;
-      // Try multiple possible field names for asset folder
-      const assetFolder = r.asset_folder || r.folder || r.path || r.asset_folder_path;
-      // Also check if public_id starts with folder path
       const publicId = r.public_id || "";
-      const inFolderByPath = publicId.startsWith(FOLDER + "/") || publicId === FOLDER;
+      const assetFolder = r.asset_folder || r.folder || r.path || r.asset_folder_path;
+      const inFolderByPath = publicId.startsWith(FOLDER + "/");
       
-      // If API already queried by asset_folder, trust it more
-      // But be defensive about field names
-      if (assetFolder && assetFolder !== FOLDER && !inFolderByPath) {
+      // Accept if from API query that was scoped to folder, or if metadata indicates folder, or if public_id in folder path
+      // But be strict - only allow if in Christmas folder
+      const isInChristmasFolder = assetFolder === FOLDER || inFolderByPath || publicId.includes(FOLDER);
+      // More strict: if assetFolder is explicitly set and different, reject
+      if (assetFolder && assetFolder !== FOLDER && !inFolderByPath && publicId.indexOf(FOLDER) !== 0) {
         console.log(JSON.stringify({ event: "skipped_asset", public_id: publicId, asset_folder: assetFolder }));
+        continue;
+      }
+      // If we got here from folder-scoped API calls and assetFolder matches or is missing but path matches
+      if (!isInChristmasFolder && assetFolder && assetFolder !== FOLDER) {
         continue;
       }
       
@@ -134,8 +183,7 @@ export default async (req: Request, context: Context) => {
     console.log(JSON.stringify({
       event: "cloudinary_manifest_filtered",
       folder: FOLDER,
-      returned: items.length,
-      total_fetched: resources.length
+      returned: items.length
     }));
 
     return new Response(JSON.stringify({ items }), {
