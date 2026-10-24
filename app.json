@@ -34,7 +34,7 @@
     ],
     "scheme": "christmascountdown",
     "extra": {
-      "manifestUrl": ""
+      "manifestUrl": "https://christmas2026countdown.netlify.app/api/wallpapers"
     }
   }
 }
