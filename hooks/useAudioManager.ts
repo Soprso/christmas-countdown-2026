@@ -1,35 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
-import { Audio } from "expo-av";
+import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import { useTheme } from "./useTheme";
 
 export function useAudioManager() {
   const { theme, muted } = useTheme();
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const playerRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
     (async () => {
       try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-        });
+        await setAudioModeAsync({
+          allowsRecording: false,
+          playsInSilentMode: true,
+          shouldPlayInBackground: false,
+        } as any);
       } catch {}
     })();
 
     const sub = AppState.addEventListener("change", (state) => {
       if (state !== "active") {
-        soundRef.current?.pauseAsync().catch(() => {});
+        try {
+          playerRef.current?.pause?.();
+        } catch {}
       }
     });
 
     return () => {
-      mounted = false;
       sub.remove();
     };
   }, []);
@@ -38,16 +36,28 @@ export function useAudioManager() {
     let mounted = true;
     (async () => {
       try {
-        if (soundRef.current) {
-          await soundRef.current.unloadAsync().catch(() => {});
-          soundRef.current = null;
+        if (playerRef.current) {
+          try {
+            playerRef.current.remove?.();
+          } catch {}
+          playerRef.current = null;
         }
-        const { sound } = await Audio.Sound.createAsync(theme.music, { isLooping: true, shouldPlay: !muted });
+        const player = createAudioPlayer(theme.music);
         if (!mounted) {
-          await sound.unloadAsync().catch(() => {});
+          try {
+            player.remove?.();
+          } catch {}
           return;
         }
-        soundRef.current = sound;
+        playerRef.current = player;
+        try {
+          player.loop = true;
+        } catch {}
+        if (!muted) {
+          try {
+            player.play?.();
+          } catch {}
+        }
         setReady(true);
       } catch {
         setReady(false);
@@ -55,18 +65,22 @@ export function useAudioManager() {
     })();
     return () => {
       mounted = false;
-      soundRef.current?.unloadAsync().catch(() => {});
-      soundRef.current = null;
+      try {
+        playerRef.current?.remove?.();
+      } catch {}
+      playerRef.current = null;
     };
   }, [theme.id]);
 
   useEffect(() => {
-    if (!soundRef.current) return;
-    if (muted) {
-      soundRef.current.pauseAsync().catch(() => {});
-    } else {
-      soundRef.current.playAsync().catch(() => {});
-    }
+    if (!playerRef.current) return;
+    try {
+      if (muted) {
+        playerRef.current.pause?.();
+      } else {
+        playerRef.current.play?.();
+      }
+    } catch {}
   }, [muted]);
 
   return { ready };

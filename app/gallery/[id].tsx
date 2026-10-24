@@ -1,8 +1,8 @@
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { Image } from "expo-image";
-import { Video, ResizeMode } from "expo-av";
-import { useState } from "react";
+import { VideoView, useVideoPlayer } from "expo-video";
+import { useEffect, useState } from "react";
 import { downloadToGallery } from "../../services/wallpaperDownload";
 
 export default function Preview() {
@@ -12,6 +12,16 @@ export default function Preview() {
   const poster = Array.isArray(params.poster) ? params.poster[0] : params.poster;
   const [downloading, setDownloading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  let player: any = null;
+  if (type === "video" && url) {
+    try {
+      player = useVideoPlayer({ uri: url }, (p: any) => {
+        p.loop = true;
+        p.play();
+      });
+    } catch {}
+  }
 
   const handleDownload = async () => {
     if (!url) return;
@@ -41,16 +51,7 @@ export default function Preview() {
         {type === "image" ? (
           <Image source={{ uri: url }} style={styles.media} contentFit="contain" cachePolicy="memory-disk" />
         ) : (
-          <Video
-            source={{ uri: url }}
-            posterSource={poster ? { uri: poster } : undefined}
-            usePoster={!!poster}
-            style={styles.media}
-            resizeMode={ResizeMode.CONTAIN}
-            shouldPlay
-            isLooping
-            useNativeControls
-          />
+          player ? <VideoView player={player} style={styles.media} /> : <View style={styles.media} />
         )}
       </View>
       {msg && <Text style={styles.msg}>{msg}</Text>}
