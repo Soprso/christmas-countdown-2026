@@ -79,10 +79,12 @@ export default async (req: Request, context: Context) => {
       event: "cloudinary_manifest_fetch",
       folder: FOLDER,
       count: resources.length,
-      samples: resources.slice(0, 10).map((r: any) => ({
+      samples: resources.slice(0, 15).map((r: any) => ({
         public_id: r.public_id,
         asset_folder: r.asset_folder,
         folder: r.folder,
+        path: r.path,
+        display_name: r.display_name,
         resource_type: r.resource_type
       }))
     }));
@@ -93,16 +95,24 @@ export default async (req: Request, context: Context) => {
       if (!r?.public_id) continue;
       const rt = r.resource_type;
       if (rt !== "image" && rt !== "video") continue;
-      // Strict filter: only assets whose actual asset_folder is exactly Christmas
-      const assetFolder = r.asset_folder || r.folder;
-      if (assetFolder !== FOLDER) {
+      // Try multiple possible field names for asset folder
+      const assetFolder = r.asset_folder || r.folder || r.path || r.asset_folder_path;
+      // Also check if public_id starts with folder path
+      const publicId = r.public_id || "";
+      const inFolderByPath = publicId.startsWith(FOLDER + "/") || publicId === FOLDER;
+      
+      // If API already queried by asset_folder, trust it more
+      // But be defensive about field names
+      if (assetFolder && assetFolder !== FOLDER && !inFolderByPath) {
+        console.log(JSON.stringify({ event: "skipped_asset", public_id: publicId, asset_folder: assetFolder }));
         continue;
       }
+      
       const item: any = {
-        id: r.public_id,
-        publicId: r.public_id,
+        id: publicId,
+        publicId: publicId,
         resourceType: rt,
-        url: cloudinary.url(r.public_id, {
+        url: cloudinary.url(publicId, {
           resource_type: rt,
           secure: true,
           format: r.format,
@@ -114,7 +124,7 @@ export default async (req: Request, context: Context) => {
         format: r.format || null,
       };
       if (rt === "video") {
-        item.posterUrl = buildPoster(r.public_id);
+        item.posterUrl = buildPoster(publicId);
       }
       items.push(item);
     }
@@ -124,7 +134,8 @@ export default async (req: Request, context: Context) => {
     console.log(JSON.stringify({
       event: "cloudinary_manifest_filtered",
       folder: FOLDER,
-      returned: items.length
+      returned: items.length,
+      total_fetched: resources.length
     }));
 
     return new Response(JSON.stringify({ items }), {
@@ -136,6 +147,7 @@ export default async (req: Request, context: Context) => {
       },
     });
   } catch (e: any) {
+    console.log(JSON.stringify({ event: "cloudinary_manifest_error", message: e?.message }));
     return new Response(JSON.stringify({ error: "Failed to fetch manifest" }), {
       status: 500,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
