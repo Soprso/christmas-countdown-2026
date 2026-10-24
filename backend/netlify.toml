@@ -1,0 +1,8 @@
+[build]
+  functions = "netlify/functions"
+  publish = "."
+
+[[redirects]]
+  from = "/api/wallpapers"
+  to = "/.netlify/functions/wallpapers"
+  status = 200

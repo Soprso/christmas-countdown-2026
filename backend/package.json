@@ -1,0 +1,10 @@
+{
+  "name": "christmas-countdown-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/functions": "^2.8.2",
+    "cloudinary": "^2.5.0"
+  }
+}
