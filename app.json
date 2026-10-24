@@ -1,25 +1,40 @@
 {
   "expo": {
-    "name": "christmas-tmp",
-    "slug": "christmas-tmp",
+    "name": "Christmas Countdown",
+    "slug": "christmas-countdown",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/images/logo.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#061826"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundColor": "#061826"
       },
-      "predictiveBackGestureEnabled": false
+      "permissions": []
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-image",
+      "expo-av",
+      "expo-file-system",
+      "expo-media-library"
+    ],
+    "scheme": "christmascountdown",
+    "extra": {
+      "manifestUrl": ""
     }
   }
 }
