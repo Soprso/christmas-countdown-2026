@@ -15,18 +15,16 @@ cloudinary.config({
 
 async function listAll() {
   const all: any[] = [];
-  // Try search API first as it's often more reliable
+  // Try search API
   try {
     let next_cursor: string | undefined = undefined;
     do {
       const res: any = await cloudinary.search
-        .expression(`asset_folder:"${FOLDER}"`)
+        .expression(`asset_folder:"${FOLDER}" OR folder:"${FOLDER}"`)
         .max_results(500)
-        .with_field("asset_folder")
-        .with_field("tags")
         .next_cursor(next_cursor)
         .execute();
-      console.log(JSON.stringify({ event: "api_call_result_search", has_resources: Array.isArray(res?.resources), count: res?.resources?.length || 0 }));
+      console.log(JSON.stringify({ event: "search_result", count: res?.resources?.length || 0 }));
       if (Array.isArray(res.resources)) {
         all.push(...res.resources);
       }
@@ -34,10 +32,9 @@ async function listAll() {
     } while (next_cursor);
     if (all.length > 0) return all;
   } catch (e: any) {
-    console.log(JSON.stringify({ event: "api_call_error_search", message: e?.message }));
+    console.log(JSON.stringify({ event: "search_err", msg: e?.message }));
   }
 
-  // Try resources_by_asset_folder
   try {
     let next_cursor: string | undefined = undefined;
     do {
@@ -46,7 +43,7 @@ async function listAll() {
         max_results: 500,
         next_cursor: next_cursor,
       });
-      console.log(JSON.stringify({ event: "api_call_result_folder", has_resources: Array.isArray(res?.resources), count: res?.resources?.length || 0 }));
+      console.log(JSON.stringify({ event: "folder_result", count: res?.resources?.length || 0 }));
       if (Array.isArray(res.resources)) {
         all.push(...res.resources);
       }
@@ -54,7 +51,7 @@ async function listAll() {
     } while (next_cursor);
     return all;
   } catch (e: any) {
-    console.log(JSON.stringify({ event: "api_call_error_folder", message: e?.message }));
+    console.log(JSON.stringify({ event: "folder_err", msg: e?.message }));
     throw e;
   }
 }
@@ -122,8 +119,19 @@ export default async (req: Request, context: Context) => {
       if (rt !== "image" && rt !== "video") continue;
       const publicId = r.public_id || "";
       const assetFolder = r.asset_folder;
+      const folderField = r.folder;
       
-      if (assetFolder !== FOLDER) {
+      const inFolderPath = publicId.startsWith(FOLDER + "/");
+      const matchesFolder = assetFolder === FOLDER || folderField === FOLDER || inFolderPath;
+      
+      // Only exclude known samples at root
+      const isSample = publicId === "cld-sample" || publicId === "cld-sample-2" || publicId === "sample" || publicId === "main-sample";
+      if (isSample && !matchesFolder) {
+        console.log(JSON.stringify({ event: "excluded_sample", public_id: publicId }));
+        continue;
+      }
+      
+      if (!matchesFolder && assetFolder && assetFolder !== FOLDER) {
         console.log(JSON.stringify({ event: "filtered_out", public_id: publicId, asset_folder: assetFolder }));
         continue;
       }
