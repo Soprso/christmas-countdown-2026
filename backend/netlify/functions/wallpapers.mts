@@ -15,15 +15,38 @@ cloudinary.config({
 
 async function listAll() {
   const all: any[] = [];
-  let next_cursor: string | undefined = undefined;
+  // Try search API first as it's often more reliable
   try {
+    let next_cursor: string | undefined = undefined;
+    do {
+      const res: any = await cloudinary.search
+        .expression(`asset_folder:"${FOLDER}"`)
+        .max_results(500)
+        .with_field("asset_folder")
+        .with_field("tags")
+        .next_cursor(next_cursor)
+        .execute();
+      console.log(JSON.stringify({ event: "api_call_result_search", has_resources: Array.isArray(res?.resources), count: res?.resources?.length || 0 }));
+      if (Array.isArray(res.resources)) {
+        all.push(...res.resources);
+      }
+      next_cursor = res.next_cursor;
+    } while (next_cursor);
+    if (all.length > 0) return all;
+  } catch (e: any) {
+    console.log(JSON.stringify({ event: "api_call_error_search", message: e?.message }));
+  }
+
+  // Try resources_by_asset_folder
+  try {
+    let next_cursor: string | undefined = undefined;
     do {
       const res: any = await cloudinary.api.resources_by_asset_folder({
         asset_folder: FOLDER,
         max_results: 500,
         next_cursor: next_cursor,
       });
-      console.log(JSON.stringify({ event: "api_call_result", has_resources: Array.isArray(res?.resources), count: res?.resources?.length || 0, next_cursor: res?.next_cursor || null }));
+      console.log(JSON.stringify({ event: "api_call_result_folder", has_resources: Array.isArray(res?.resources), count: res?.resources?.length || 0 }));
       if (Array.isArray(res.resources)) {
         all.push(...res.resources);
       }
@@ -31,7 +54,7 @@ async function listAll() {
     } while (next_cursor);
     return all;
   } catch (e: any) {
-    console.log(JSON.stringify({ event: "api_call_error", message: e?.message || String(e) }));
+    console.log(JSON.stringify({ event: "api_call_error_folder", message: e?.message }));
     throw e;
   }
 }
@@ -87,8 +110,7 @@ export default async (req: Request, context: Context) => {
         public_id: r.public_id,
         asset_folder: r.asset_folder,
         folder: r.folder,
-        resource_type: r.resource_type,
-        format: r.format
+        resource_type: r.resource_type
       }))
     }));
 
@@ -100,11 +122,9 @@ export default async (req: Request, context: Context) => {
       if (rt !== "image" && rt !== "video") continue;
       const publicId = r.public_id || "";
       const assetFolder = r.asset_folder;
-      const folderField = r.folder;
       
-      // Accept if asset_folder equals Christmas (exact match as stated)
       if (assetFolder !== FOLDER) {
-        console.log(JSON.stringify({ event: "filtered_out", public_id: publicId, asset_folder: assetFolder, folder: folderField }));
+        console.log(JSON.stringify({ event: "filtered_out", public_id: publicId, asset_folder: assetFolder }));
         continue;
       }
       
@@ -145,7 +165,7 @@ export default async (req: Request, context: Context) => {
       },
     });
   } catch (e: any) {
-    console.log(JSON.stringify({ event: "diagnostic_error", message: e?.message }));
+    console.log(JSON.stringify({ event: "diagnostic_error" }));
     return new Response(JSON.stringify({ error: "Failed to fetch manifest" }), {
       status: 500,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
