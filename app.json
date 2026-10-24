@@ -22,7 +22,20 @@
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#061826"
       },
-      "permissions": []
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
+      ],
+      "package": "com.rshadowmonarch123.christmascountdown"
     },
     "plugins": [
       "expo-router",
@@ -35,7 +48,16 @@
     ],
     "scheme": "christmascountdown",
     "extra": {
-      "manifestUrl": "https://christmas2026countdown.netlify.app/api/wallpapers"
-    }
+      "manifestUrl": "https://christmas2026countdown.netlify.app/api/wallpapers",
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "e56fa1a5-0adf-4b40-bfae-d963434f672f"
+      }
+    },
+    "owner": "rshadowmonarch123"
   }
 }
