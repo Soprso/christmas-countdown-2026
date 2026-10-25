@@ -5,38 +5,41 @@ import { BRAND_NAME } from "../constants/themes";
 import { router } from "expo-router";
 import { useAudioManager } from "../hooks/useAudioManager";
 import { useTheme } from "../hooks/useTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Home() {
   useAudioManager();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   return (
     <ThemeBackground>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Christmas is Coming</Text>
-          <Pressable onPress={() => router.push("/settings")} style={styles.settingsBtn} accessibilityLabel="Settings">
-            <Text style={{ color: theme.colors.text, fontSize: 20 }}>⚙</Text>
+          <View style={{ flex: 1 }} />
+          <Pressable onPress={() => router.push("/settings")} style={styles.settingsBtn} accessibilityLabel="Settings" hitSlop={8}>
+            <Text style={{ color: "#f5f3ee", fontSize: 22 }}>❄</Text>
           </Pressable>
         </View>
         <View style={styles.center}>
+          <Text style={styles.heading}>CHRISTMAS IS COMING</Text>
           <Countdown />
           <Pressable style={styles.cta} onPress={() => router.push("/gallery")}>
-            <Text style={styles.ctaText}>Explore Wallpapers</Text>
+            <Text style={styles.ctaText}>EXPLORE WALLPAPERS</Text>
           </Pressable>
         </View>
-        <Text style={[styles.brand, { color: theme.colors.textSecondary }]}>{BRAND_NAME}</Text>
+        <Text style={[styles.brand, { color: "#f5f3ee", marginBottom: insets.bottom + 12 }]}>{BRAND_NAME}</Text>
       </View>
     </ThemeBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 40 },
-  title: { fontSize: 26, fontWeight: "800" },
-  settingsBtn: { padding: 8 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 20 },
-  cta: { backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 18, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.5)" },
-  ctaText: { color: "#fff", fontWeight: "700" },
-  brand: { textAlign: "center", marginBottom: 12, fontSize: 12 },
+  container: { flex: 1, paddingHorizontal: 16 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end" },
+  heading: { color: "#f5f3ee", fontSize: 28, fontWeight: "900", letterSpacing: 2, textAlign: "center", marginBottom: 18 },
+  settingsBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,0,0,0.4)", borderWidth: 1, borderColor: "#d4af37", alignItems: "center", justifyContent: "center" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 22 },
+  cta: { backgroundColor: "#7c1c2b", paddingHorizontal: 22, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: "#d4af37" },
+  ctaText: { color: "#f5f3ee", fontWeight: "800", letterSpacing: 1 },
+  brand: { textAlign: "center", fontSize: 11 },
 });

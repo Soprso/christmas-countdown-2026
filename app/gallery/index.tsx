@@ -8,6 +8,7 @@ import { Pressable, Text } from "react-native";
 import { router } from "expo-router";
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_FOLDER } from "../../constants/themes";
 import Constants from "expo-constants";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FETCH_TIMEOUT_MS = 10000;
 
@@ -17,6 +18,7 @@ export default function Gallery() {
   const [error, setError] = useState<string | null>(null);
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
+  const insets = useSafeAreaInsets();
 
   const fetchManifest = async (manifestUrl: string) => {
     if (fetchingRef.current) return;
@@ -45,7 +47,6 @@ export default function Gallery() {
       await setCachedManifest(normalized);
       setError(null);
     } catch (e: any) {
-      // On failure, try to use cached data even if expired
       const cached = await getCachedManifest();
       if (cached?.items?.length && mountedRef.current) {
         setItems(cached.items);
@@ -77,7 +78,6 @@ export default function Gallery() {
           if (mountedRef.current) setLoading(false);
           return;
         }
-        // stale or refresh needed - refresh in background
         fetchManifest(manifestUrl);
         if (mountedRef.current) setLoading(false);
         return;
@@ -114,16 +114,18 @@ export default function Gallery() {
   return (
     <ThemeBackground>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()}><Text style={{ color: "#fff" }}>← Back</Text></Pressable>
-          <Text style={styles.title}>Christmas Gallery</Text>
-          <View style={{ width: 40 }} />
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Back" hitSlop={8}>
+            <Text style={{ color: "#f5f3ee", fontSize: 18 }}>←</Text>
+          </Pressable>
+          <Text style={styles.title}>Christmas Wallpapers</Text>
+          <View style={{ width: 44 }} />
         </View>
         {loading && <LoadingState text="Loading gallery..." />}
         {!loading && items.length === 0 && !error && (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>No wallpapers found yet.</Text>
-            <Text style={styles.emptySub}>Set "manifestUrl" in app.json extra to your backend endpoint, upload images/videos to Cloudinary folder "{CLOUDINARY_FOLDER}" under cloud "{CLOUDINARY_CLOUD_NAME}", and deploy the server.</Text>
+            <Text style={styles.emptySub}>Check your connection or try again.</Text>
           </View>
         )}
         {!loading && error && <ErrorState text={error} onRetry={load} />}
@@ -135,9 +137,10 @@ export default function Gallery() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, marginTop: 40 },
-  title: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 10 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,0,0,0.4)", borderWidth: 1, borderColor: "#d4af37", alignItems: "center", justifyContent: "center" },
+  title: { color: "#f5f3ee", fontSize: 18, fontWeight: "800", letterSpacing: 1 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
-  emptyText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  emptySub: { color: "#e6e6e6", textAlign: "center", marginTop: 8 },
+  emptyText: { color: "#f5f3ee", fontSize: 16, fontWeight: "700" },
+  emptySub: { color: "#f5f3ee", textAlign: "center", marginTop: 8, opacity: 0.9 },
 });
